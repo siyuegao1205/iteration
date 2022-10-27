@@ -27,9 +27,268 @@ scale_fill_discrete = scale_fill_viridis_d
 ```
 
 
+## Z-scores!!
+
+Let's compute the z-score version of a list of numbers.
+
+```{r}
+x_vec = rnorm(25, mean = 7, sd = 4)
+
+(x_vec - mean(x_vec)) / sd(x_vec)
+```
+
+Suppose you want to do this often.
+
+**NAME OF FUNCTION** = function(**ARGUEMENTS**) {
+  
+  **BODY OF FUNCTION**
+}
+
+```{r}
+z_scores = function(x) {
+  
+  if (!is.numeric(x)) {
+    stop("Z scores only work for numbers")
+  }
+  
+  if (length(x) < 3) {
+    stop("Z scores really only work if you have three or more numbers")
+  }
+  
+  z = (x - mean(x)) / sd(x)
+  
+  z
+  
+}
+```
 
 
+```{r}
+z_scores(x = x_vec)
+
+z_scores(x = 1:10)
+z_scores(x = rbinom(1000, 1, .6))
+
+# z_scores(x = 2) # not working
+# z_scores(x = "my name is jeff") # not working either
+```
 
 
+## Let's have multiple outputs
 
+Let's just get the mean and sd from the vector input.
+
+```{r}
+mean_and_sd = function(x) {
+
+  if (!is.numeric(x)) {
+    stop("Z scores only work for numbers")
+  }
+  
+  if (length(x) < 3) {
+    stop("Z scores really only work if you have three or more numbers")
+  }
+  
+  mean_x = mean(x)
+  sd_x = sd(x)
+  
+  tibble(
+    mean = mean_x,
+    sd = sd_x
+  )
+  
+}
+
+mean_and_sd(x = x_vec)
+mean_and_sd(x = 1:10)
+mean_and_sd(x = rbinom(1000, 1, .5))
+
+# mean_and_sd(x = 1)
+```
+
+
+## Let's start with simulations ...
+
+```{r}
+x_vec = rnorm(n = 25000, mean = 17, sd = 4)
+
+tibble(
+  mean = mean(x_vec),
+  sd = sd(x_vec)
+)
+```
+
+Can I do this using a function ...
+
+```{r}
+sim_mean_sd = function(n_obs, true_mean = 7, true_sd = 4) {
+  
+  x = rnorm(n = n_obs, mean =  true_mean, sd = true_sd)
+  
+  
+  tibble(
+    mean = mean(x),
+    sd = sd(x)
+  )
+  
+}
+
+sim_mean_sd = function(n_obs, true_mean = 7, true_sd = 4) {
+  
+  x_inside_of_function = rnorm(n = n_obs, mean =  true_mean, sd = true_sd)
+  
+  
+  tibble(
+    mean = mean(x_inside_of_function),
+    sd = sd(x_inside_of_function)
+  )
+  
+}
+
+# x_inside_of_function (does not exist)
+```
+
+does it work?
+
+```{r}
+sim_mean_sd(n_obs = 25, true_mean = 100, true_sd = 1)
+sim_mean_sd(n_obs = 2500)
+sim_mean_sd(2500)
+```
+
+
+## Fixing bad stuff
+
+
+```{r}
+url = "https://www.amazon.com/product-reviews/B00005JNBQ/ref=cm_cr_arp_d_viewopt_rvwer?ie=UTF8&reviewerType=avp_only_reviews&sortBy=recent&pageNumber=1"
+
+dynamite_html = read_html(url)
+
+review_titles = 
+  dynamite_html %>%
+  html_nodes(".a-text-bold span") %>%
+  html_text()
+
+review_stars = 
+  dynamite_html %>%
+  html_nodes("#cm_cr-review_list .review-rating") %>%
+  html_text() %>%
+  str_extract("^\\d") %>%
+  as.numeric()
+
+review_text = 
+  dynamite_html %>%
+  html_nodes(".review-text-content span") %>%
+  html_text() %>% 
+  str_replace_all("\n", "") %>% 
+  str_trim()
+
+reviews = tibble(
+  title = review_titles,
+  stars = review_stars,
+  text = review_text
+)
+```
+
+
+Let’s write a function to get reviews.
+
+```{r}
+read_page_reviews = function(url){
+  
+  dynamite_html = read_html(url)
+  
+  review_titles = 
+    dynamite_html %>%
+    html_nodes(".a-text-bold span") %>%
+    html_text()
+
+  review_stars = 
+    dynamite_html %>%
+    html_nodes("#cm_cr-review_list .review-rating") %>%
+    html_text() %>%
+    str_extract("^\\d") %>%
+    as.numeric()
+  
+  review_text = 
+    dynamite_html %>%
+    html_nodes(".review-text-content span") %>%
+    html_text() %>% 
+    str_replace_all("\n", "") %>% 
+    str_trim() %>% 
+    str_subset("The media could not be loaded.", negate = TRUE) %>% 
+    str_subset("^$", negate = TRUE)
+  
+  reviews = tibble(
+    title = review_titles,
+    stars = review_stars,
+    text = review_text
+  )
+  
+  reviews
+  
+}
+
+read_page_reviews(url)
+```
+
+
+```{r}
+base_url = "https://www.amazon.com/product-reviews/B00005JNBQ/ref=cm_cr_arp_d_viewopt_rvwer?ie=UTF8&reviewerType=avp_only_reviews&sortBy=recent&pageNumber="
+
+vec_urls = str_c(base_url, c(1, 2, 4, 5))
+
+vec_urls = str_c(base_url, 1:5)
+
+dynamite_reviews =
+  bind_rows(
+    read_page_reviews(vec_urls[1]),
+    read_page_reviews(vec_urls[2]),
+    read_page_reviews(vec_urls[3]),
+    read_page_reviews(vec_urls[4]),
+    read_page_reviews(vec_urls[5])
+  )
+```
+
+
+```{r}
+fellowship_ring = readxl::read_excel("./data/LotR_Words.xlsx", range = "B3:D6") %>%
+  mutate(movie = "fellowship_ring")
+
+two_towers = readxl::read_excel("./data/LotR_Words.xlsx", range = "F3:H6") %>%
+  mutate(movie = "two_towers")
+
+return_king = readxl::read_excel("./data/LotR_Words.xlsx", range = "J3:L6") %>%
+  mutate(movie = "return_king")
+
+lotr_tidy = bind_rows(fellowship_ring, two_towers, return_king) %>%
+  janitor::clean_names() %>%
+  gather(key = sex, value = words, female:male) %>%
+  mutate(race = str_to_lower(race)) %>% 
+  select(movie, everything())
+```
+
+Write a function to achieve it?
+
+```{r}
+lotr_load_and_tidy = function(path, range, movie_name) {
+  
+  df = readxl::read_excel(path, range = range) %>%
+    janitor::clean_names() %>%
+    gather(key = sex, value = words, female:male) %>%
+    mutate(race = str_to_lower(race),
+           movie = movie_name)
+  
+  df
+  
+}
+
+lotr_tidy = 
+  bind_rows(
+    lotr_load_and_tidy("./data/LotR_Words.xlsx", "B3:D6", "fellowship_ring"),
+    lotr_load_and_tidy("./data/LotR_Words.xlsx", "F3:H6", "two_towers"),
+    lotr_load_and_tidy("./data/LotR_Words.xlsx", "J3:L6", "return_king")) %>%
+  select(movie, everything()) 
+```
 
