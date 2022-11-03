@@ -123,7 +123,7 @@ Can I do this using a function ...
 ```{r}
 sim_mean_sd = function(n_obs, true_mean = 7, true_sd = 4) {
   
-  x = rnorm(n = n_obs, mean =  true_mean, sd = true_sd)
+  x = rnorm(n = n_obs, mean = true_mean, sd = true_sd)
   
   
   tibble(
